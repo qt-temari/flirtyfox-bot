@@ -43,9 +43,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [
             InlineKeyboardButton("Updates", url="https://t.me/WorkGlows"),
             InlineKeyboardButton("Support", url="https://t.me/TheCryptoElders"),
-        ],
-        [
-            InlineKeyboardButton("Repository", url="https://github.com/asadofc/flirtyfox-bot"),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
