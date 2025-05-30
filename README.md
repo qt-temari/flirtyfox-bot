@@ -70,7 +70,7 @@ Whether you're looking to:
 ## 👤 Creator
 
 Developed by **Asadul Islam (Asad)**  
-Telegram: [@FlirtFoxBot](https://t.me/FlirtFoxBot)
+Telegram: [@asad_ofc](https://t.me/asad_ofc)
 
 ---
 
