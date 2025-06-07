@@ -5,6 +5,10 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import random
 import logging
 
+# ─── Imports for Dummy HTTP Server ──────────────────────────────────────────
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
 TOKEN = os.environ.get("BOT_TOKEN")  # Replace with your actual bot token
 
 # LOGGING SETUP
@@ -633,6 +637,27 @@ def main():
     app.add_handler(CommandHandler("slap", slap))
 
     app.run_polling()
+    
+# ─── Dummy HTTP Server to Keep Render Happy ─────────────────────────────────
+class DummyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"AFK bot is alive!")
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+
+def start_dummy_server():
+    port = int(os.environ.get("PORT", 10000))  # Render injects this
+    server = HTTPServer(("0.0.0.0", port), DummyHandler)
+    print(f"Dummy server listening on port {port}")
+    server.serve_forever()
 
 if __name__ == "__main__":
+
+# Start dummy HTTP server (needed for Render health check)
+    threading.Thread(target=start_dummy_server, daemon=True).start()
+    
     main()
