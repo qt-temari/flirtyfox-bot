@@ -46,7 +46,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [
             InlineKeyboardButton("Updates", url="https://t.me/WorkGlows"),
-            InlineKeyboardButton("Support", url="https://t.me/TheCryptoElders"),
+            InlineKeyboardButton("Support", url="https://t.me/SoulMeetsHQ"),
         ],
         [
             InlineKeyboardButton("Add Me To Your Group", url="https://t.me/flirtfoxbot?startgroup=true"),
