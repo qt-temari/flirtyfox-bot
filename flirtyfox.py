@@ -233,6 +233,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.HTML
     )
 
+    await update.message.reply_html(
+        text=BOT_MESSAGES["setup"],
+        reply_markup=reply_markup,
+        disable_web_page_preview=True
+    )
+
 # Ping latency command
 async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE):
     start_time = time.time()
@@ -407,6 +413,15 @@ def main():
     app.add_handler(CommandHandler("slap", slap))
 
     print("Flirty Fox Bot is starting...")
+    
+    # Set up commands menu after bot initialization
+    async def post_init(application):
+        commands = [(cmd, desc) for cmd, desc in COMMANDS.items()]
+        await application.bot.set_my_commands(commands)
+        print("Bot commands menu has been set up!")
+    
+    app.post_init = post_init
+    
     app.run_polling()
 
 if __name__ == "__main__":
