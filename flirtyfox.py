@@ -1,633 +1,403 @@
 import os
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ChatAction
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+import time
 import random
 import logging
-
-# ─── Imports for Dummy HTTP Server ──────────────────────────────────────────
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ChatAction, ParseMode
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-TOKEN = os.environ.get("BOT_TOKEN")  # Replace with your actual bot token
+# Bot configuration settings
+TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+PORT = int(os.environ.get("PORT", 10000))
+UPDATES_URL = os.environ.get("UPDATES_URL", "https://t.me/WorkGlows")
+SUPPORT_URL = os.environ.get("SUPPORT_URL", "https://t.me/SoulMeetsHQ")
 
-# LOGGING SETUP
+# Basic logging setup
 logging.basicConfig(level=logging.INFO)
 
-# UTIL FUNCTION
-async def send_typing_then_reply(update: Update, context: ContextTypes.DEFAULT_TYPE, message: str, reply_to_message_id=None):
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
-    await update.message.reply_html(
-        text=message,
-        reply_to_message_id=reply_to_message_id
-    )
+# Bot text messages
+BOT_MESSAGES = {
+    "welcome": """Hey there, {user}! 🦊💕
 
-# START
+I'm Flirty Fox, your cheeky companion for all things fun and flirty! 
+
+Ready to spice up your day with some playful banter? Let's get this party started! 🎉✨""",
+    "provide_name": "Please provide a name or reply to someone!",
+    "pinging": "🛰️ Pinging...",
+    "pong": "🏓 <a href=\"https://t.me/SoulMeetsHQ\">Pong!</a> {latency}ms"
+}
+
+# Random image URLs
+IMAGES = [
+    "https://ik.imagekit.io/asadofc/Images1.png",
+    "https://ik.imagekit.io/asadofc/Images2.png",
+    "https://ik.imagekit.io/asadofc/Images3.png",
+    "https://ik.imagekit.io/asadofc/Images4.png",
+    "https://ik.imagekit.io/asadofc/Images5.png",
+    "https://ik.imagekit.io/asadofc/Images6.png",
+    "https://ik.imagekit.io/asadofc/Images7.png",
+    "https://ik.imagekit.io/asadofc/Images8.png",
+    "https://ik.imagekit.io/asadofc/Images9.png",
+    "https://ik.imagekit.io/asadofc/Images10.png",
+    "https://ik.imagekit.io/asadofc/Images11.png",
+    "https://ik.imagekit.io/asadofc/Images12.png",
+    "https://ik.imagekit.io/asadofc/Images13.png",
+    "https://ik.imagekit.io/asadofc/Images14.png",
+    "https://ik.imagekit.io/asadofc/Images15.png",
+    "https://ik.imagekit.io/asadofc/Images16.png",
+    "https://ik.imagekit.io/asadofc/Images17.png",
+    "https://ik.imagekit.io/asadofc/Images18.png",
+    "https://ik.imagekit.io/asadofc/Images19.png",
+    "https://ik.imagekit.io/asadofc/Images20.png",
+    "https://ik.imagekit.io/asadofc/Images21.png",
+    "https://ik.imagekit.io/asadofc/Images22.png",
+    "https://ik.imagekit.io/asadofc/Images23.png",
+    "https://ik.imagekit.io/asadofc/Images24.png",
+    "https://ik.imagekit.io/asadofc/Images25.png",
+    "https://ik.imagekit.io/asadofc/Images26.png",
+    "https://ik.imagekit.io/asadofc/Images27.png",
+    "https://ik.imagekit.io/asadofc/Images28.png",
+    "https://ik.imagekit.io/asadofc/Images29.png",
+    "https://ik.imagekit.io/asadofc/Images30.png",
+    "https://ik.imagekit.io/asadofc/Images31.png",
+    "https://ik.imagekit.io/asadofc/Images32.png",
+    "https://ik.imagekit.io/asadofc/Images33.png",
+    "https://ik.imagekit.io/asadofc/Images34.png",
+    "https://ik.imagekit.io/asadofc/Images35.png",
+    "https://ik.imagekit.io/asadofc/Images36.png",
+    "https://ik.imagekit.io/asadofc/Images37.png",
+    "https://ik.imagekit.io/asadofc/Images38.png",
+    "https://ik.imagekit.io/asadofc/Images39.png",
+    "https://ik.imagekit.io/asadofc/Images40.png"
+]
+
+# Romantic fun facts
+FACTS_LIST = [
+    "❤️ Kissing can burn up to 6 calories a minute!",
+    "💋 Your lips are 100 times more sensitive than your fingertips.",
+    "🧠 Falling in love has neurological effects similar to cocaine.",
+    "💕 Couples who hold hands have synchronized heartbeats.",
+    "🌹 The smell of roses can boost your libido.",
+    "😍 Looking into someone's eyes for 4 minutes can make you fall in love.",
+    "💘 Chocolate releases the same chemicals as falling in love."
+]
+
+# Witty roast messages
+ROAST_LIST = [
+    "😂 You're like a cloud. When you disappear, it's a beautiful day.",
+    "🔥 I'd roast you, but my mom said I shouldn't burn trash.",
+    "😏 You're the reason gene pools need lifeguards.",
+    "💀 If laughter is the best medicine, your face must be curing the world.",
+    "🎭 You're not stupid; you just have bad luck thinking.",
+    "🌟 You're like a shooting star - everyone wishes you'd disappear.",
+    "💡 You're so bright, you make the sun jealous... of your stupidity."
+]
+
+# Flirty pickup lines
+FLIRT_LIST = [
+    "😍 Are you a magician? Because whenever I look at you, everyone else disappears.",
+    "🔥 Do you have a map? I keep getting lost in your eyes.",
+    "💕 Are you Wi-Fi? Because I'm feeling a connection.",
+    "🌟 If you were a vegetable, you'd be a cute-cumber.",
+    "💋 Are you made of copper and tellurium? Because you're Cu-Te.",
+    "😘 Do you believe in love at first sight, or should I walk by again?",
+    "💘 Are you a parking ticket? Because you've got 'fine' written all over you."
+]
+
+# Romance dating tips
+TIPS_LIST = [
+    "💬 Listen more, talk less - it's sexy.",
+    "🔥 Foreplay isn't optional. It's essential.",
+    "👁️ Eye contact during conversations increases attraction by 30%.",
+    "💋 Light touches on the arm can increase romantic interest.",
+    "🌹 Surprise dates are more memorable than expensive ones.",
+    "😊 Genuine compliments are more effective than generic ones.",
+    "💕 Shared experiences create stronger bonds than material gifts."
+]
+
+# Truth game questions
+TRUTHS = [
+    "😏 What's your most secret desire?",
+    "💋 What's the most romantic thing someone has done for you?",
+    "🔥 What's your biggest turn-on?",
+    "💕 Have you ever had a crush on someone in this group?",
+    "😍 What's the sexiest quality someone can have?",
+    "💘 What's your ideal first date?",
+    "🌟 What's something you've never told anyone?"
+]
+
+# Dare game challenges
+DARES = [
+    "💌 Send a flirty emoji to the last person you chatted with.",
+    "😘 Give someone in the group a virtual kiss.",
+    "🔥 Post a story saying 'I'm single and ready to mingle' for 5 minutes.",
+    "💋 Send a voice note saying 'Hey gorgeous' to your crush.",
+    "😍 Change your profile picture to a selfie with a wink.",
+    "💕 Text your ex 'I miss you' then immediately say 'Sorry, wrong person'.",
+    "🌹 Compliment the person above you in the most flirty way possible."
+]
+
+# Playful slap responses
+SLAPS = [
+    "👋 Slaps you with love - don't make me do it again!",
+    "🤚 *SLAP* That's for being too cute!",
+    "✋ Gets slapped back to reality!",
+    "👋 *Slaps gently* Wake up, sunshine!",
+    "🤚 Slaps you with a bouquet of roses!",
+    "✋ *SLAP* That's what you get for being awesome!",
+    "👋 Gets a love slap - the best kind!"
+]
+
+# Percentage feedback messages
+FEEDBACK_MESSAGES = {
+    "low": "Not impressive... Needs some work!",
+    "below_average": "Hmm, you're getting there!",
+    "average": "Decent! You've got potential.",
+    "good": "Ooh, quite spicy! Keep it up!",
+    "excellent": "You're an absolute legend at this!"
+}
+
+# Available bot commands
+COMMANDS = {
+    "start": "🏠 Bot welcome message",
+    "love": "💖 Love percentage check",
+    "horny": "🥵 Horny level meter",
+    "pervy": "🤤 Pervy level check", 
+    "sex": "🔥 Sexual prowess rating",
+    "facts": "💌 Romantic fun facts",
+    "roast": "💥 Witty roast generator",
+    "flirt": "💘 Flirty pickup lines",
+    "tips": "💡 Romance dating tips",
+    "t": "❓ Truth question game",
+    "d": "🎲 Dare challenge game", 
+    "slap": "👋 Playful slap reply"
+}
+
+# Get percentage feedback
+def get_feedback(percent):
+    if percent <= 20:
+        return FEEDBACK_MESSAGES["low"]
+    elif percent <= 40:
+        return FEEDBACK_MESSAGES["below_average"]
+    elif percent <= 60:
+        return FEEDBACK_MESSAGES["average"]
+    elif percent <= 80:
+        return FEEDBACK_MESSAGES["good"]
+    else:
+        return FEEDBACK_MESSAGES["excellent"]
+
+# Extract user info
+def get_user_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.reply_to_message:
+        user = update.message.reply_to_message.from_user
+        name = user.mention_html()
+        reply_to = update.message.reply_to_message.message_id
+    elif context.args:
+        name = " ".join(context.args)
+        reply_to = None
+    else:
+        return None, None
+    
+    return name, reply_to
+
+# Welcome command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
-    welcome_msg = (
-        f"🌟 Welcome {user.mention_html()} to Flirty Fox! 🌟\n\n"
-        "Get ready for a journey filled with fun, laughter, and a touch of spice! 🔥\n\n"
-        "✨ Available Commands: ✨\n"
-        "💖 /love - Check love percentage\n"
-        "🥵 /horny - Check your horny level\n"
-        "🤤 /pervy - Check your pervy level\n"
-        "🔥 /sexrate - Rate your sex power\n"
-        "💌 /facts - Romantic or sexual facts\n"
-        "💥 /roast - Roast someone with a zing!\n"
-        "💘 /flirt - Get a flirty line for the day\n"
-        "💡 /tips - Romantic & sexual tips\n"
-        "❓ /t - Truth question\n"
-        "🎲 /d - Dare challenge\n"
-        "👋 /slap - Get a playful slap reply\n\n"
-        "Let the adventure begin! ✋😝🤚"
-    )
+    welcome_msg = BOT_MESSAGES["welcome"].format(user=user.mention_html())
+    
+    # Get dynamic username
+    bot_info = await context.bot.get_me()
+    bot_username = bot_info.username
 
     keyboard = [
         [
-            InlineKeyboardButton("Updates", url="https://t.me/WorkGlows"),
-            InlineKeyboardButton("Support", url="https://t.me/SoulMeetsHQ"),
+            InlineKeyboardButton("Updates", url=UPDATES_URL),
+            InlineKeyboardButton("Support", url=SUPPORT_URL),
         ],
         [
-            InlineKeyboardButton("Add Me To Your Group", url="https://t.me/flirtfoxbot?startgroup=true"),
+            InlineKeyboardButton("Add Me To Your Group", url=f"https://t.me/{bot_username}?startgroup=true"),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    # Send random image
+    random_image = random.choice(IMAGES)
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
-    await update.message.reply_html(
-        text=welcome_msg,
-        reply_markup=reply_markup
+    await context.bot.send_photo(
+        chat_id=update.effective_chat.id,
+        photo=random_image,
+        caption=welcome_msg,
+        reply_markup=reply_markup,
+        parse_mode=ParseMode.HTML
     )
 
-# RANDOM %
-async def handle_random_percent(update: Update, context: ContextTypes.DEFAULT_TYPE, label: str):
-    if update.message.reply_to_message:
-        user = update.message.reply_to_message.from_user
-        name = user.mention_html()
-        reply_to = update.message.reply_to_message.message_id
-    elif context.args:
-        name = " ".join(context.args)
-        reply_to = None
+# Ping latency command
+async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    start_time = time.time()
+    
+    # Check chat type
+    is_private = update.effective_chat.type == 'private'
+    
+    if is_private:
+        # Private chat message
+        message = await update.message.reply_html(BOT_MESSAGES["pinging"])
     else:
-        await send_typing_then_reply(update, context, f"Please provide a name or reply to someone!")
+        # Group reply message
+        message = await update.message.reply_html(
+            BOT_MESSAGES["pinging"], 
+            reply_to_message_id=update.message.message_id
+        )
+    
+    # Calculate response latency
+    end_time = time.time()
+    latency = round((end_time - start_time) * 1000, 2)
+    
+    # Edit with pong
+    pong_message = BOT_MESSAGES["pong"].format(latency=latency)
+    await context.bot.edit_message_text(
+        chat_id=update.effective_chat.id,
+        message_id=message.message_id,
+        text=pong_message,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True
+    )
+
+# Handle percentage commands
+async def handle_random_percent(update: Update, context: ContextTypes.DEFAULT_TYPE, label: str):
+    name, reply_to = get_user_info(update, context)
+    
+    if not name:
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+        await update.message.reply_html(BOT_MESSAGES["provide_name"])
         return
 
     percent = random.randint(10, 100)
-    if percent <= 20:
-        feedback = "Not impressive... Needs some work!"
-    elif percent <= 40:
-        feedback = "Hmm, you're getting there!"
-    elif percent <= 60:
-        feedback = "Decent! You've got potential."
-    elif percent <= 80:
-        feedback = "Ooh, quite spicy! Keep it up!"
-    else:
-        feedback = "You're an absolute legend at this!"
+    feedback = get_feedback(percent)
+    message = f"{name}, your {label} level is {percent}%\n\n{feedback}"
+    
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    await update.message.reply_html(
+        text=message,
+        reply_to_message_id=reply_to
+    )
 
-    await send_typing_then_reply(update, context, f"{name}, your {label} level is {percent}%\n\n{feedback}", reply_to_message_id=reply_to)
-
+# Love percentage command
 async def love(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await handle_random_percent(update, context, "love")
 
+# Horny level command
 async def horny(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await handle_random_percent(update, context, "horny")
 
+# Pervy level command
 async def pervy(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await handle_random_percent(update, context, "pervy")
 
-async def sexrate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Sex rating command
+async def sex(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await handle_random_percent(update, context, "sex")
 
-# LISTS
-facts_list = [
-    "❤️ Kissing can burn up to 6 calories a minute!",
-    "💤 Cuddling helps release oxytocin, making you sleep better.",
-    "✨ Eye contact for 2 minutes can make strangers fall in love.",
-    "⚡ Orgasms relieve pain by releasing endorphins.",
-    "❄️ Kissing boosts your immune system!",
-    "❤️‍🔥 Morning sex boosts your mood for the whole day.",
-    "❤️ Physical affection leads to lower blood pressure.",
-    "🔥 Sexual activity improves heart health.",
-    "🥰 Couples who laugh together stay together longer.",
-    "❣️ 60 seconds of hugging releases oxytocin!",
-    "❤️ Sex can actually count as light exercise!",
-    "✨ Compliments trigger dopamine — the pleasure chemical.",
-    "❤️‍🔥 People who flirt live longer, study says!",
-    "🧠 Thinking about someone you love can decrease stress levels.",
-    "🔥 Touching skin-to-skin calms your nervous system.",
-    "❤️ Cuddling after intimacy strengthens bonds.",
-    "❄️ Passionate kissing increases saliva flow — great for teeth!",
-    "✨ Sexually satisfied people tend to perform better at work.",
-    "❤️ Being in love lowers cortisol (stress hormone).",
-    "❤️ Kissing can strengthen your relationship by improving communication.",
-    "✨ Intimacy can strengthen your immune system over time.",
-    "❤️ Foreplay can enhance emotional connection drastically.",
-    "❤️ Oxytocin (love hormone) makes people more trusting.",
-    "❤️ Touch triggers the brain’s reward center.",
-    "✨ Even playful flirting releases feel-good hormones!",
-    "❤️ Spontaneous romance keeps the relationship exciting.",
-    "⚡ Partners who share adventures have stronger intimacy.",
-    "❤️ Emotional intimacy often enhances physical intimacy.",
-    "❤️ Smelling your partner’s scent can ease anxiety.",
-    "✨ Sexual satisfaction correlates with overall happiness.",
-    "❤️ Regular cuddles are linked to lower risk of depression.",
-    "❣️ Holding hands literally synchronizes your heartbeat.",
-    "❤️ Physical touch is a basic human need.",
-    "✨ Sex burns between 100–300 calories per session!",
-    "❤️ Making love can boost self-esteem and confidence.",
-    "❤️ The brain reacts to love like it reacts to cocaine!",
-    "✨ Flirting helps release serotonin — your happy chemical.",
-    "❤️ Orgasms increase pain tolerance by up to 70%.",
-    "❄️ Kissing involves over 30 facial muscles — workout bonus!",
-    "❤️ Being playful together boosts relationship satisfaction.",
-    "✨ Fantasizing about your partner strengthens attraction.",
-    "❤️ Good communication = better sex, proven scientifically.",
-    "❤️ Trust improves physical connection between partners.",
-    "❣️ Teasing your partner increases sexual tension positively.",
-    "✨ Laughing together increases attraction.",
-    "❤️ Smiling during intimacy boosts connection deeply.",
-    "⚡ Daily affirmations from partners build sexual confidence.",
-    "❤️ Just thinking about someone you love relieves pain.",
-    "✨ Sexual chemistry often starts in the mind.",
-    "❤️ Long hugs (over 20 seconds) increase oxytocin.",
-    "✨ Novelty in intimacy keeps passion alive longer.",
-    "❤️ Playfulness outside the bedroom enhances passion inside it."
-]
-
-roast_list = [
-    "😂 You’re like a cloud. When you disappear, it’s a beautiful day.",
-    "😜 If I had a dollar for every smart thing you said, I’d be broke.",
-    "🤣 You're the reason shampoo has instructions.",
-    "😆 You bring everyone so much joy... when you leave the room.",
-    "😝 You're the human version of a participation trophy.",
-    "😏 You're slower than dial-up internet.",
-    "😅 You're the 'before' picture in every advertisement.",
-    "🙄 You’re proof that even evolution takes a break.",
-    "😂 You're as useless as the 'g' in lasagna.",
-    "😜 If awkward was an Olympic sport, you'd win gold.",
-    "🤣 You’re like a cloud: when you vanish, it’s a beautiful day.",
-    "😆 You have something on your chin... no, the third one down.",
-    "😋 You’re the dictionary definition of 'meh'.",
-    "😜 Your secrets are always safe with me. I never even listen when you tell me them.",
-    "🙃 You're as sharp as a marble.",
-    "😂 You could trip over a wireless internet connection.",
-    "😝 I’d agree with you, but then we’d both be wrong.",
-    "🤣 You're like a phone with no signal—nobody needs you.",
-    "😆 Your brain is like a web browser: 19 tabs are open, but none of them are working.",
-    "🥴 You look like a mistake, but at least you’re an original one.",
-    "🤣 I’d explain it to you, but I left my English-to-Dingbat dictionary at home.",
-    "😂 You're like a sandwich without filling—just plain and dry.",
-    "😜 You have the perfect face for radio.",
-    "😆 The only time you’ll be the center of attention is if you accidentally trip and fall.",
-    "🤣 You're like a broken pencil—pointless.",
-    "😅 You're the only person who can trip over a wireless connection.",
-    "😏 You're not stupid; you just have bad luck thinking.",
-    "😂 If I had a nickel for every time you said something smart, I'd be broke.",
-    "😜 You're the reason the instructions on shampoo bottles exist.",
-    "🤣 You're like a highlighter—bright, but ultimately unnecessary.",
-    "😆 You have the perfect face for radio.",
-    "🙃 If laziness was an Olympic sport, you’d be a gold medalist.",
-    "😅 I'd agree with you, but then we’d both be wrong.",
-    "🤣 If brains were taxed, you’d get a refund.",
-    "😂 You make a rock look like a genius.",
-    "😋 Your life is like a software update—just when you think it’s finished, there’s more.",
-    "🤣 You’re like a math book—full of problems, no solutions.",
-    "😂 You’re not stupid; you just have bad luck thinking.",
-    "😜 You make a rock look like a genius.",
-    "🙄 You're like a phone with no signal—nobody needs you.",
-    "🥴 You can’t fix stupid, but you can put it on display.",
-    "🤣 You're not stupid, you just have bad luck thinking.",
-    "😏 If you were any more dense, you'd have your own gravitational pull.",
-    "😂 If I had a penny for every dumb thing you said, I'd be rich by now.",
-    "😝 I’m not saying you’re dumb, but you have a high chance of tripping over a cordless phone.",
-    "😆 Your ideas are like unicorns—beautiful in theory but not real.",
-    "🤣 You're like a broken clock—right twice a day, but still useless most of the time.",
-    "😂 If stupidity was a crime, you’d be serving a life sentence.",
-    "😜 I’ve seen salads dressed better than you.",
-    "🤣 You're like a cloud—sometimes I think you’re floating away.",
-    "😂 You can’t spell 'stupid' without 'u' and 'i'—wait, that doesn’t make sense.",
-    "😋 You’d be a great example in a 'What Not To Do' documentary.",
-    "🙄 Your head is so empty, it echoes when you talk.",
-    "😆 You’re the kind of person who trips over a wireless connection.",
-    "🤣 You have a face for radio and a voice for silent movies.",
-    "😝 You're like a vending machine—people keep trying, but nobody wants to pay for you.",
-    "😏 If I had a brain cell for every time you said something intelligent, I’d have zero.",
-    "😂 You're the human version of a participation trophy.",
-    "😜 You could be a superhero, but your superpower would be being invisible to intelligence.",
-    "😆 The world needs more people like you... just not near me.",
-    "🤣 You have the perfect face for radio and the perfect voice for silent movies.",
-    "🙃 You're a few fries short of a Happy Meal.",
-    "😂 You’re like a broken pencil—pointless.",
-    "😝 Your Wi-Fi signal is stronger than your personality.",
-    "😏 You’re like an IKEA bookshelf—confusing and nobody’s really sure how you’re supposed to fit in.",
-    "🤣 If I had a nickel for every time you said something smart, I’d be broke.",
-    "😆 You’re like a cloud—when you disappear, it’s a beautiful day.",
-    "😝 If you were any more clueless, we’d need a map to find you.",
-    "😏 If I had to rank your intelligence, I’d give you a solid 'meh'.",
-    "🙄 You’re like a sloth with Wi-Fi—you move slow, but never get anything done.",
-    "🤣 If I had a penny for every dumb thing you said, I’d have enough to buy you a brain.",
-    "😂 You're the reason why instructions exist.",
-    "😜 You're like a cookie without chocolate chips—plain and disappointing.",
-    "😆 You're like a broken compass—lost without direction.",
-    "🤣 You couldn’t pour water out of a boot if the instructions were on the heel.",
-    "😏 You look like you’ve been hit by the stupid bus.",
-    "😂 You're the reason they put warning labels on everything.",
-    "😝 You’d be the best at staring contests... with yourself.",
-    "🤣 If brains were taxed, you’d get a refund.",
-    "😋 You're the reason they made instructions on shampoo bottles.",
-    "🙄 You should come with a warning sign.",
-    "😆 You're like a puzzle with a missing piece—just incomplete.",
-    "🤣 You're like a lightbulb with no power—just sitting there.",
-    "😜 If I had a brain, I’d tell you how dumb that was.",
-    "😝 You’re the human version of a typo.",
-    "😂 If you were any dumber, we’d need to put you in a museum.",
-    "😋 Your mind is like a web browser—19 tabs open, but none are relevant.",
-    "🤣 If you were any more lazy, you'd have to be double-parked.",
-    "😂 You're the reason the phrase 'Good things come to those who wait' doesn't apply to you.",
-    "🙄 You look like a 'before' picture in a weight loss ad.",
-    "😝 You’re the type to give directions in a circle.",
-    "😏 You could trip over flat ground.",
-    "🤣 If there was a contest for stupidity, you’d win first place—no competition."
-]
-
-flirt_list = [
-    "😍 Are you a magician? Because whenever I look at you, everyone else disappears.",
-    "😉 You must be made of copper and tellurium, because you're Cu-Te.",
-    "💖 Do you have a map? Because I keep getting lost in your eyes.",
-    "🌹 If kisses were snowflakes, I’d send you a blizzard.",
-    "😘 Are you French? Because Eiffel for you.",
-    "💫 You must be a star, because your beauty lights up the whole room.",
-    "💋 Is your name Google? Because you have everything I’ve been searching for.",
-    "🌟 Do you have a Band-Aid? Because I just scraped my knee falling for you.",
-    "❤️ Are you an angel? Because heaven is missing one.",
-    "💘 I think you’re suffering from a lack of vitamin me.",
-    "🔥 If beauty were a crime, you’d be serving a life sentence.",
-    "✨ If I could rearrange the alphabet, I’d put U and I together.",
-    "🌼 Your smile is the only sunshine I need.",
-    "💖 I never believed in love at first sight, but that was before I saw you.",
-    "😍 Is your name Wi-Fi? Because I’m feeling a connection.",
-    "🌹 Are you a campfire? Because you’re hot and I want s’more.",
-    "😘 Can I follow you home? Cause my parents always told me to follow my dreams.",
-    "💘 Do you have a pencil? Because I want to erase your past and write our future.",
-    "💫 If you were a vegetable, you’d be a cute-cumber.",
-    "🔥 You must be a parking ticket, because you’ve got ‘fine’ written all over you.",
-    "🌟 Your hand looks heavy, can I hold it for you?",
-    "❤️ Do you have a mirror in your pocket? Because I can see myself in your pants.",
-    "💋 Are you a time traveler? Because I see you in my future.",
-    "🌼 I was blinded by your beauty... I’m going to need your name and number for insurance purposes.",
-    "✨ If kisses were raindrops, I’d send you a storm.",
-    "💖 Is your dad a boxer? Because you’re a knockout.",
-    "💘 You’re so sweet, you’re giving me a toothache.",
-    "🔥 If you were a vegetable, you’d be a cute-cumber.",
-    "😍 I must be a snowflake, because I’ve fallen for you.",
-    "🌹 Are you made of sugar? Because you’re sweet enough to give me a sugar rush.",
-    "😘 If beauty were a crime, you’d be a life sentence.",
-    "💫 Can you lend me a kiss? I promise I’ll give it back.",
-    "🌟 Is it hot in here, or is it just you?",
-    "💋 If I were a cat, I’d spend all 9 lives with you.",
-    "❤️ Are you a photographer? Because I can picture us together.",
-    "✨ You must be a magician, because whenever I look at you, everyone else disappears.",
-    "😍 Are you from Paris? Because Eiffel for you.",
-    "🌼 You had me at hello.",
-    "💘 Are you a time traveler? Because I see you in my future.",
-    "💖 I’m not a photographer, but I can picture us together.",
-    "🔥 Are you a flame? Because you’re so hot, I can’t look away.",
-    "🌹 I’m not a genie, but I can grant your wishes.",
-    "💋 You must be a campfire, because you’re hot and I want s’more.",
-    "💫 If you were a fruit, you’d be a fineapple.",
-    "❤️ Do you have a pencil? Because I want to draw you a kiss.",
-    "🌟 You must be tired because you’ve been running through my mind all day.",
-    "😘 You must be the square root of negative one, because you can’t be real.",
-    "💖 Are you a dictionary? Because you add meaning to my life.",
-    "🌼 You brighten my day just by being you.",
-    "💘 You’re so sweet, you make sugar jealous.",
-    "😍 I must be a snowflake because I’ve fallen for you.",
-    "🌹 Are you a bank loan? Because you have my interest.",
-    "💋 Are you a star? Because your beauty lights up the night.",
-    "💫 You make my heart race faster than the speed of light.",
-    "❤️ Are you a cake? Because you’re as sweet as can be.",
-    "💘 Are you an angel? Because heaven is missing one.",
-    "🔥 You must be fire because you make me feel alive.",
-    "🌼 I must be dreaming because you’re too perfect to be real.",
-    "💖 Are you a wish? Because you just came true.",
-    "🌟 You’re like a dictionary, you add meaning to my life.",
-    "💋 Can I borrow a kiss? I promise I’ll give it back.",
-    "✨ You must be the reason for global warming because you're too hot.",
-    "😍 If you were a fruit, you'd be a fineapple.",
-    "💘 Are you an alien? Because your beauty is out of this world.",
-    "🌹 If you were a vegetable, you'd be a cute-cumber.",
-    "💋 Are you made of chocolate? Because you’re sweet and irresistible.",
-    "🔥 Are you a magnet? Because you’re attracting me.",
-    "🌼 Your smile is my favorite part of the day.",
-    "💖 I must be a snowflake, because I’ve fallen for you.",
-    "💘 You make my heart race faster than a Ferrari.",
-    "🌟 If kisses were snowflakes, I’d send you a blizzard.",
-    "✨ Can you feel the sparks flying between us?",
-    "💋 You’re the missing piece to my puzzle.",
-    "🔥 Are you a light? Because you brighten up my world.",
-    "🌼 If beauty were a crime, you’d be serving a life sentence.",
-    "💖 Are you a puzzle? Because I’m falling for you piece by piece.",
-    "🌹 Do you have a map? Because I keep getting lost in your eyes.",
-    "💫 Is your name Wi-Fi? Because I’m feeling a connection.",
-    "❤️ I’d say you’re one in a million, but you’re one in a lifetime.",
-    "💘 If I could rearrange the alphabet, I’d put U and I together.",
-    "🌟 Are you an angel? Because heaven is missing one.",
-    "💋 Can I follow you home? Cause my parents always told me to follow my dreams.",
-    "✨ You must be a diamond, because you’re one of a kind.",
-    "💖 Are you a magnet? Because I’m drawn to you.",
-    "🔥 You must be made of fire, because you're burning up my heart.",
-    "🌼 You’re the reason my heart skips a beat.",
-    "💋 You must be a dream, because I can’t believe you’re real.",
-    "💘 Can I offer you a ride? Because my heart races for you.",
-    "🌟 You light up my world like nobody else.",
-    "💖 I just want to hold your hand and never let go."
-]
-
-tips_list = [
-    "💬 Listen more, talk less — it’s sexy.",
-    "🔥 Foreplay isn’t optional. It’s essential.",
-    "💖 Compliment with intent, not habit.",
-    "🎁 Surprise them — even with small things.",
-    "💭 Explore fantasies together.",
-    "👋 Little touches throughout the day build anticipation.",
-    "💪 Confidence is the ultimate turn-on.",
-    "👀 Be present, not distracted — attention is sexy.",
-    "📝 Create memories, not just moments.",
-    "😂 Laughter can be the best foreplay.",
-    "✨ Compliment the way they make you feel, not just their looks.",
-    "😏 Slow down, don't rush the good moments.",
-    "💋 Always leave something to the imagination.",
-    "💌 A handwritten note can be the most romantic gesture.",
-    "💫 Share secrets to build a deeper connection.",
-    "🎧 Music sets the mood. Curate a playlist together.",
-    "🍷 Wine and conversation are a perfect pair.",
-    "🕯️ Light candles to create a calming atmosphere.",
-    "🎉 Make each day a mini celebration of each other.",
-    "💑 Trust builds the best intimacy.",
-    "📚 Learn together. Knowledge is sexy.",
-    "🖤 The more you care, the more it shows in your touch.",
-    "🎨 Try new things in the bedroom to keep the spark alive.",
-    "🖋️ Write love letters. They never go out of style.",
-    "🥂 Toast to each other — make each moment count.",
-    "💬 Text sweet things in the middle of the day, just because.",
-    "🌹 Leave little surprises around their space.",
-    "🔒 Keep secrets, especially between the two of you.",
-    "📅 Plan a surprise date night for no reason.",
-    "📸 Capture spontaneous moments to remember the fun.",
-    "🤝 Make them feel like a partner, not just a lover.",
-    "🌌 Take time to stargaze together. It’s romantic.",
-    "🎭 Try role-playing or dress-up for some added fun.",
-    "👣 Walk barefoot together in nature — it’s grounding.",
-    "🧸 Sometimes the simplest touch can say the most.",
-    "🌟 Keep the romance alive, even after years together.",
-    "🧡 When they’re feeling down, offer your support in subtle ways.",
-    "🍫 Surprise them with their favorite treat, just because.",
-    "💐 Give flowers for no reason other than to say you care.",
-    "🏖️ Take a weekend getaway to rekindle the romance.",
-    "💭 Remember the little things that make them happy.",
-    "💘 Share your dreams with each other and build a future together.",
-    "🛋️ Have a cozy night in — sometimes that’s all you need.",
-    "🕵️‍♀️ Be curious about them, even after time together.",
-    "🌞 Morning coffee or tea can be an intimate ritual.",
-    "🎲 Play games that challenge you both, in and out of the bedroom.",
-    "🔐 Protect the bond you share, and keep it private.",
-    "🎶 Dance in the kitchen for no reason at all — it’s fun.",
-    "🌹 Make each other feel special every single day.",
-    "💃 Have a spontaneous dance party at home.",
-    "📝 Leave a sweet note in their pocket for them to find later.",
-    "🌸 Never underestimate the power of a thoughtful text."
-]
-
-truths = [
-    "😏 What's your most secret desire?",
-    "❤️ Have you ever had a crush on someone here?",
-    "🙈 What’s the most embarrassing thing you've done?",
-    "🌶️ What's the wildest fantasy you've ever had?",
-    "🤥 Have you ever lied to get someone's attention?",
-    "💋 What's your biggest turn-on?",
-    "👀 If you had to kiss one person here, who would it be?",
-    "🍕 What’s a guilty pleasure you haven't told anyone?",
-    "💭 Who was your first crush?",
-    "📱 Have you ever sent a risky text and regretted it?",
-    "🫣 Have you ever had a crush on someone who didn’t know?",
-    "💭 What’s your biggest turn-off?",
-    "👀 What’s the worst date you’ve ever been on?",
-    "🥺 What’s something you would do if no one was watching?",
-    "🍸 If you could go on a date with anyone, who would it be?",
-    "🌹 What’s the best compliment you’ve ever received?",
-    "💎 What do you find most attractive in a person?",
-    "💌 Have you ever sent someone a love letter?",
-    "🔥 What’s the most romantic thing you’ve ever done?",
-    "💃 Do you believe in love at first sight?",
-    "🖤 Do you prefer deep conversations or light-hearted chats?",
-    "🎲 What’s something you’ve always wanted to try but never did?",
-    "📝 Do you keep a journal or diary?",
-    "📚 What’s your most treasured book?",
-    "🎤 Have you ever sung in front of an audience?",
-    "💘 Have you ever been in love?",
-    "😎 What’s the craziest thing you’ve done on a dare?",
-    "💌 If you could date any fictional character, who would it be?",
-    "🤔 What’s your idea of a perfect date?",
-    "🌟 What’s the most spontaneous thing you’ve ever done?",
-    "🎉 Have you ever done something embarrassing on purpose?",
-    "🍒 What’s your ultimate guilty pleasure?",
-    "🫣 Do you have any secret talents that no one knows about?",
-    "🎁 What’s the best gift you’ve ever received?",
-    "💭 If you could change one thing about yourself, what would it be?",
-    "🤗 Do you believe in soulmates?",
-    "⚡ What’s the most outrageous thing you’ve done for love?",
-    "🎢 What’s the most adventurous thing you’ve ever done?",
-    "🍯 Have you ever had a secret crush on a teacher or boss?",
-    "🥀 What’s your idea of a perfect relationship?",
-    "🦋 What’s your biggest pet peeve?",
-    "🍷 Have you ever had a one-night stand?",
-    "😚 What’s the cheesiest pickup line someone’s used on you?",
-    "🚨 What’s the most illegal thing you’ve ever done?",
-    "🧠 If you could switch lives with anyone for a day, who would it be?",
-    "🎧 What’s your go-to karaoke song?",
-    "🌙 Do you prefer morning or night time?",
-    "🍓 What’s your favorite part of a romantic date?",
-    "🚗 Have you ever kissed someone in a car?",
-    "⛅ What’s something you wish you could tell someone, but you can’t?",
-    "💭 What’s the last thing you do before bed?",
-    "💪 Would you rather be super strong or super smart?"
-]
-
-dares = [
-    "💌 Send a flirty emoji to the last person you chatted with.",
-    "📱 Text 'I miss you' to someone unexpected.",
-    "📸 Change your profile pic to something weird for 5 minutes.",
-    "🎤 Record yourself saying something sexy and send it to a friend (voice note).",
-    "💓 Send a heart emoji to the 3rd person in your chat list.",
-    "📝 Describe your last dream in full detail to the group.",
-    "🎭 Call someone and tell them you love them in a funny voice.",
-    "🎤 Pretend you’re a celebrity giving an award speech for 30 seconds.",
-    "🌐 Send a gif describing your mood right now.",
-    "🎁 Give someone a random compliment.",
-    "💋 Send a selfie with a silly face to someone.",
-    "📸 Take a video of you doing a funny dance and send it to the group.",
-    "💬 Send a message to someone you haven’t talked to in a while.",
-    "🥳 Do your best dance moves on video and send it to the group.",
-    "🤡 Send a picture of you making a silly face to someone.",
-    "🕺 Call a friend and sing them a random song of your choice.",
-    "👯 Take a picture of your shoes and send it to a friend.",
-    "🥺 Send a voice message telling someone how much you appreciate them.",
-    "💫 Post a silly story on your social media.",
-    "💃 Record yourself doing 10 jumping jacks and send it to a friend.",
-    "🌸 Share a childhood picture of yourself with the group.",
-    "🍫 Send a message with a random fun fact you know.",
-    "🎨 Draw something on paper and take a picture to share with the group.",
-    "🎤 Sing a random karaoke song and send it to someone.",
-    "📞 Send a message to your best friend saying, ‘I need a hug’!",
-    "💌 Write a sweet note to someone and send it randomly.",
-    "🔥 Send a funny meme to a friend.",
-    "🍔 Record yourself eating something weird and send it to a friend.",
-    "🎬 Re-enact a scene from your favorite movie and send it to someone.",
-    "🎶 Record yourself singing a lullaby and send it to a friend.",
-    "🌈 Take a photo of your socks and share it with the group.",
-    "📷 Take a picture of the sunset and send it to a friend.",
-    "🎤 Call someone and say a random sentence in a silly accent.",
-    "🤳 Take a picture of your favorite spot in your room.",
-    "🌟 Post an embarrassing video on your story.",
-    "👀 Change your phone background to a funny image for the next 10 minutes.",
-    "🧃 Send a voice note with the most random fact you can think of.",
-    "🥳 Do a cartwheel and send a video of it to the group.",
-    "📚 Share a motivational quote with a friend.",
-    "🍕 Take a picture of the last meal you ate and share it.",
-    "💄 Send a picture of your favorite lipstick shade.",
-    "💃 Record a video of you doing a funny dance challenge.",
-    "🍉 Share a silly meme with a friend.",
-    "🐶 Pretend to be a dog for 30 seconds and send the video.",
-    "🎧 Record your reaction to a song and share it with the group.",
-    "🥱 Send a picture of you yawning to the group.",
-    "🥓 Record yourself eating your favorite snack and send it to a friend.",
-    "📚 Share a fun fact about yourself.",
-    "🦸‍♂️ Pretend to be a superhero for 1 minute and send a video of it.",
-    "💭 Share a childhood memory with the group.",
-    "🎲 Tell a joke and send it to a friend.",
-    "🍀 Send a screenshot of your most embarrassing text to a friend.",
-    "💬 Text your crush a random compliment.",
-    "📷 Take a picture of something funny in your room and send it to the group.",
-    "💡 Share a lightbulb moment you had recently."
-]
-
-slaps = [
-    "👋 *slaps you with love*—don't make me do it again!",
-    "💥 *slaps you dramatically* as if the world depends on it!",
-    "🔥 *slaps you with a passion* you didn't know existed!",
-    "🍑 *slaps you on your behind*—that was for the fun of it!",
-    "🥴 *slaps you with confusion*—what were you thinking?!",
-    "💪 *slaps you with strength*—that's how it's done!",
-    "⚡ *slaps you like a jolt of electricity*—zap!",
-    "🌪️ *slaps you with the force of a tornado*—watch out!",
-    "🥂 *slaps you with a toast*—cheers to your awesomeness!",
-    "⚡ *slaps you with a shocking twist*—you didn’t see that coming!",
-    "💥 *slaps you like a thunderstorm*—POW!",
-    "💀 *slaps you with dark energy*—why so serious?",
-    "💋 *slaps you with a kiss*—it’s a sweet one, trust me.",
-    "🎭 *slaps you like it’s a Shakespearean play*—where art thou, Romeo?",
-    "👀 *slaps you to wake up from your dreams*—hello?!",
-    "💥 *slaps you with the intensity of a hurricane*—hold on!",
-    "🖤 *slaps you with sarcasm*—because you needed that!",
-    "🌠 *slaps you like a falling star*—catch that!",
-    "🐉 *slaps you with the power of a dragon*—ROAR!",
-    "👑 *slaps you like royalty*—how dare you!",
-    "🌌 *slaps you with cosmic energy*—we're all just stardust.",
-    "🎮 *slaps you like a video game boss*—you're not winning this time.",
-    "🎩 *slaps you like a magician*—now you see it, now you don’t!",
-    "🎤 *slaps you with a mic drop*—boom, mind blown!",
-    "💎 *slaps you like a precious jewel*—worth every second.",
-    "🥂 *slaps you with elegance*—classy, just classy.",
-    "🍩 *slaps you with sweetness*—because you’re too sweet to resist.",
-    "💀 *slaps you like a ghost*—you didn’t even feel it coming!",
-    "🎩 *slaps you like a grand illusion*—whoops, sorry!",
-    "🎶 *slaps you like a dance move*—now follow my lead!",
-    "🌑 *slaps you with mystery*—dark and ominous.",
-    "🔥 *slaps you with fiery passion*—the heat is on!",
-    "🎉 *slaps you with celebration*—time to party!",
-    "💣 *slaps you with a blast of power*—BOOM!",
-    "🎁 *slaps you with a gift*—you didn’t expect that, huh?",
-    "🦄 *slaps you with a magical touch*—prestidigitation at its finest.",
-    "🌟 *slaps you like a shooting star*—make a wish!",
-    "🎠 *slaps you like you’re on a rollercoaster*—hold tight!",
-    "🍿 *slaps you like a movie moment*—cut to black!",
-    "⚔️ *slaps you like a knight in shining armor*—prepare yourself!",
-    "💥 *slaps you like a superhero landing*—expect the dramatic flair.",
-    "🍁 *slaps you with nature’s touch*—wind through the trees!",
-    "🥳 *slaps you with excitement*—let’s go wild!",
-    "⚓ *slaps you like a sailor’s goodbye*—take care, mate!",
-    "🍷 *slaps you with sophistication*—savor the taste.",
-    "💎 *slaps you with precious confidence*—you got this!",
-    "🛸 *slaps you with extraterrestrial vibes*—get ready for takeoff!",
-    "🦇 *slaps you like a spooky ghost*—BOO!",
-    "💪 *slaps you with pure strength*—don’t test me!",
-    "👽 *slaps you like an alien encounter*—you’re not from around here, are you?",
-    "🎬 *slaps you with an epic scene*—take a bow, it’s your moment!",
-    "🎤 *slaps you like a karaoke superstar*—it’s your stage now!",
-    "🌈 *slaps you with colorful joy*—bring on the rainbow!",
-    "💫 *slaps you with sparkling stardust*—shine bright!",
-    "🔮 *slaps you with mystery*—prepare for the unknown!",
-    "🦋 *slaps you with lightness*—like a butterfly kiss!",
-    "🌪️ *slaps you with a tornado of feelings*—hold on to your emotions!"
-]
-
-# RANDOM FUNCTIONS
+# Random facts command
 async def facts(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await send_typing_then_reply(update, context, random.choice(facts_list))
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    await update.message.reply_html(random.choice(FACTS_LIST))
 
+# Flirt lines command
 async def flirt(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await send_typing_then_reply(update, context, random.choice(flirt_list))
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    await update.message.reply_html(random.choice(FLIRT_LIST))
 
+# Romance tips command
 async def tips(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await send_typing_then_reply(update, context, random.choice(tips_list))
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    await update.message.reply_html(random.choice(TIPS_LIST))
 
-# ROAST
+# Roast someone command
 async def roast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.reply_to_message:
-        user = update.message.reply_to_message.from_user
-        name = user.mention_html()
-        reply_to = update.message.reply_to_message.message_id
-    elif context.args:
-        name = " ".join(context.args)
-        reply_to = None
-    else:
-        await send_typing_then_reply(update, context, "Please provide a name or reply to someone!")
+    name, reply_to = get_user_info(update, context)
+    
+    if not name:
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+        await update.message.reply_html(BOT_MESSAGES["provide_name"])
         return
 
-    await send_typing_then_reply(update, context, f"{name}, {random.choice(roast_list)}", reply_to_message_id=reply_to)
+    message = f"{name}, {random.choice(ROAST_LIST)}"
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    await update.message.reply_html(
+        text=message,
+        reply_to_message_id=reply_to
+    )
 
-# TRUTH, DARE, SLAP
+# Truth question command
 async def t(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = random.choice(truths)
+    msg = random.choice(TRUTHS)
     reply_to = update.message.reply_to_message.message_id if update.message.reply_to_message else None
-    await send_typing_then_reply(update, context, msg, reply_to_message_id=reply_to)
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    await update.message.reply_html(
+        text=msg,
+        reply_to_message_id=reply_to
+    )
 
+# Dare challenge command
 async def d(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = random.choice(dares)
+    msg = random.choice(DARES)
     reply_to = update.message.reply_to_message.message_id if update.message.reply_to_message else None
-    await send_typing_then_reply(update, context, msg, reply_to_message_id=reply_to)
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    await update.message.reply_html(
+        text=msg,
+        reply_to_message_id=reply_to
+    )
 
+# Slap someone command
 async def slap(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.reply_to_message:
         user = update.message.reply_to_message.from_user
         name = user.mention_html()
-        msg = f"{name}, {random.choice(slaps)}"
+        msg = f"{name}, {random.choice(SLAPS)}"
         reply_to = update.message.reply_to_message.message_id
     else:
-        msg = random.choice(slaps)
+        msg = random.choice(SLAPS)
         reply_to = None
 
-    await send_typing_then_reply(update, context, msg, reply_to_message_id=reply_to)
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    await update.message.reply_html(
+        text=msg,
+        reply_to_message_id=reply_to
+    )
 
+# HTTP server handler
+class DummyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Flirty Fox Bot is alive!")
+
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+
+    def log_message(self, format, *args):
+        pass
+
+# Start HTTP server
+def start_dummy_server():
+    server = HTTPServer(("0.0.0.0", PORT), DummyHandler)
+    print(f"Dummy server listening on port {PORT}")
+    server.serve_forever()
+
+# Main bot function
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
 
+    # Add command handlers
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("ping", ping))
     app.add_handler(CommandHandler("love", love))
     app.add_handler(CommandHandler("horny", horny))
     app.add_handler(CommandHandler("pervy", pervy))
-    app.add_handler(CommandHandler("sexrate", sexrate))
+    app.add_handler(CommandHandler("sex", sex))
     app.add_handler(CommandHandler("facts", facts))
     app.add_handler(CommandHandler("roast", roast))
     app.add_handler(CommandHandler("flirt", flirt))
@@ -636,28 +406,12 @@ def main():
     app.add_handler(CommandHandler("d", d))
     app.add_handler(CommandHandler("slap", slap))
 
+    print("Flirty Fox Bot is starting...")
     app.run_polling()
-    
-# ─── Dummy HTTP Server to Keep Render Happy ─────────────────────────────────
-class DummyHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"AFK bot is alive!")
-
-    def do_HEAD(self):
-        self.send_response(200)
-        self.end_headers()
-
-def start_dummy_server():
-    port = int(os.environ.get("PORT", 10000))  # Render injects this
-    server = HTTPServer(("0.0.0.0", port), DummyHandler)
-    print(f"Dummy server listening on port {port}")
-    server.serve_forever()
 
 if __name__ == "__main__":
-
-# Start dummy HTTP server (needed for Render health check)
+    # Start HTTP server
     threading.Thread(target=start_dummy_server, daemon=True).start()
     
+    # Start the bot
     main()
