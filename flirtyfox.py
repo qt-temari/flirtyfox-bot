@@ -952,7 +952,9 @@ async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.edit_message_text(
             chat_id=update.effective_chat.id,
             message_id=message.message_id,
-            text=BOT_MESSAGES["pong"].format(latency=latency)
+            text=BOT_MESSAGES["pong"].format(latency=latency),
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True
         )
         
     except Exception as e:
