@@ -1,19 +1,46 @@
 import os
+import sys
 import time
 import random
 import logging
-import threading
-import aiohttp
 import asyncio
+import aiohttp
+import threading
 import traceback
-import sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Message
-from telegram.constants import ChatAction, ParseMode
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from telegram.error import TelegramError, NetworkError, BadRequest, Forbidden
-from typing import Dict, Optional, Tuple, Any
+
 from datetime import datetime
+from typing import (
+    Dict,
+    Optional,
+    Tuple,
+    Any
+)
+from http.server import (
+    BaseHTTPRequestHandler,
+    HTTPServer
+)
+
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message
+)
+from telegram.constants import (
+    ChatAction,
+    ParseMode
+)
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes
+)
+from telegram.error import (
+    TelegramError,
+    NetworkError,
+    BadRequest,
+    Forbidden
+)
 
 # Environment variables configuration
 TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
