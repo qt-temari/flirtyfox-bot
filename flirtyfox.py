@@ -1091,7 +1091,7 @@ class DummyHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
-            response = b"Flirty Fox Bot is alive and kicking! 🦊💕"
+            response = b"Flirty Fox Bot is alive and kicking!"
             self.wfile.write(response)
         except Exception as e:
             logger.error(f"❌ Error handling GET request: {str(e)}")
