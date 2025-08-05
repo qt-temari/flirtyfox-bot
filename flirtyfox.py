@@ -933,66 +933,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"🔍 Traceback: {traceback.format_exc()}")
 
 async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Handle ping command
     try:
-        logger.info("🏓 Processing /ping command")
-        
-        if not update or not update.message:
-            logger.error("❌ Invalid update object in ping command")
-            return
-            
-        user_info = extract_user_info(update.message)
-        log_with_user_info("info", "🛰️ Ping command initiated", user_info)
-        
         start_time = time.time()
-        chat_id = update.effective_chat.id
         
-        try:
-            is_private = update.effective_chat.type == 'private'
-            logger.debug(f"💬 Chat type: {'private' if is_private else 'group'}")
-        except Exception as e:
-            logger.warning(f"⚠️ Error checking chat type: {str(e)}")
-            is_private = False
+        # Send initial ping message (reply in groups, normal in private)
+        reply_to = update.message.message_id if update.effective_chat.type != 'private' else None
         
-        reply_to = None if is_private else update.message.message_id
-        
-        success = await safe_send_message(
-            context, chat_id, BOT_MESSAGES["pinging"], reply_to, user_info=user_info
+        message = await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=BOT_MESSAGES["pinging"],
+            reply_to_message_id=reply_to
         )
         
-        if not success:
-            log_with_user_info("error", "❌ Failed to send ping message", user_info)
-            return
-        
+        # Calculate latency and edit the message
         end_time = time.time()
         latency = round((end_time - start_time) * 1000, 2)
-        logger.debug(f"⚡ Calculated latency: {latency}ms")
         
-        try:
-            pong_message = BOT_MESSAGES["pong"].format(latency=latency)
-            
-            messages = await context.bot.get_updates(limit=1)
-            if messages:
-                last_message = messages[-1].message if messages[-1].message else None
-                if last_message:
-                    await context.bot.edit_message_text(
-                        chat_id=chat_id,
-                        message_id=last_message.message_id,
-                        text=pong_message,
-                        parse_mode=ParseMode.HTML,
-                        disable_web_page_preview=True
-                    )
-                    log_with_user_info("info", f"✅ Pong sent with latency: {latency}ms", user_info)
-                else:
-                    await safe_send_message(context, chat_id, pong_message, reply_to, user_info=user_info)
-        except Exception as edit_e:
-            logger.warning(f"⚠️ Failed to edit ping message: {str(edit_e)}")
-            pong_message = BOT_MESSAGES["pong"].format(latency=latency)
-            await safe_send_message(context, chat_id, pong_message, reply_to, user_info=user_info)
-            
+        await context.bot.edit_message_text(
+            chat_id=update.effective_chat.id,
+            message_id=message.message_id,
+            text=BOT_MESSAGES["pong"].format(latency=latency)
+        )
+        
     except Exception as e:
-        logger.error(f"❌ Error in ping command: {str(e)}")
-        logger.error(f"🔍 Traceback: {traceback.format_exc()}")
+        logger.error(f"Error in ping command: {e}")
 
 async def handle_random_percent(update: Update, context: ContextTypes.DEFAULT_TYPE, label: str):
     # Handle percentage based commands
