@@ -11,7 +11,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from telegram.constants import ChatAction, ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from telegram.error import TelegramError, NetworkError, BadRequest, Unauthorized, Forbidden
+from telegram.error import TelegramError, NetworkError, BadRequest, Forbidden
 from typing import Dict, Optional, Tuple, Any
 from datetime import datetime
 
